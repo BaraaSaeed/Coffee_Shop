@@ -10,45 +10,49 @@ package co.grandcircus.coffee_shop.dao;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
+
 import org.springframework.stereotype.Repository;
 
 import co.grandcircus.coffee_shop.entity.User;
 
 @Repository
+@Transactional
 public class UserDao {
 
-	@Autowired
-	private JdbcTemplate jdbc;
+	@PersistenceContext
+	private EntityManager em;
 
 	public List<User> findAll() {
-		String sql = "SELECT * FROM Users";
-		return jdbc.query(sql, new BeanPropertyRowMapper<>(User.class));
+		return em.createQuery("FROM FOOD", User.class).getResultList();
 	}
 
-	public User findBuyID(Long id) {
-		String sql = "SELECT * FROM Users WHERE id = ?";
-		return jdbc.queryForObject(sql, new BeanPropertyRowMapper<>(User.class), id);
+	public User findByID(Long id) {
+		return em.find(User.class, id);
+	}
+
+	public User FindByEmailAndPassowrd(String email, String password) {
+		try {
+			return em.createQuery("FROM User WHERE email = :email AND password= :password", User.class)
+					.setParameter("email", email).setParameter("password", password).getSingleResult();
+		} catch (NoResultException ex) { // <-- see here
+			return null;
+		}
 	}
 
 	public void update(User user) {
-		String sql = "UPDATE Users SET first_name=?, last_name=?, phone_number=?, email=?, password=? WHERE id =?";
-		jdbc.update(sql, user.getFirstName(), user.getLastName(), user.getPhoneNumber(), user.getEmail(),
-				user.getPassword());
+		em.merge(user);
 	}
 
 	public void create(User user) {
-		String sql = "INSERT INTO Users (first_name, last_name, phone_number, email, password) VALUES (?, ?, ?, ?, ?)";
-		System.out.println(user.getFirstName() + " ... " + user.getLastName() + " ... " + user.getPhoneNumber()
-				+ user.getEmail() + " ... " + user.getPassword());
-		jdbc.update(sql, user.getFirstName(), user.getLastName(), user.getPhoneNumber(), user.getEmail(),
-				user.getPassword());
+		em.persist(user);
 	}
 
 	public void delete(Long id) {
-		String sql = "DELETE FROM Users WHERE ID =? ";
-		jdbc.update(sql, id);
+		User user = em.getReference(User.class, id);
+		em.remove(user);
 	}
 }
